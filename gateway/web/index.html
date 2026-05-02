@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gateway 控制台</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; background: #f6f7f9; color: #1f2937; }
+  header { background: #111827; color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  header .logo { font-weight: 600; }
+  header .spacer { flex: 1; }
+  header .user { font-size: 14px; opacity: .85; }
+  header button { background: transparent; color: #fff; border: 1px solid #374151; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #d1d5db; }
+  .tabs button { background: none; border: none; padding: 10px 18px; cursor: pointer; font-size: 14px; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button.active { color: #111827; border-bottom-color: #2563eb; font-weight: 500; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 16px; font-size: 16px; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: #2563eb; }
+  button.primary { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { background: #ef4444; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  button.ghost { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f9fafb; font-weight: 500; color: #6b7280; font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  td.actions { white-space: nowrap; }
+  td.actions button { margin-right: 4px; }
+  .status-active { color: #059669; }
+  .status-revoked, .status-expired { color: #dc2626; }
+  .copy-token { font-family: monospace; font-size: 12px; cursor: pointer; }
+  .copy-token:hover { color: #2563eb; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #111827; color: #fff; padding: 10px 16px; border-radius: 4px; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.15); z-index: 1000; opacity: 0; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #dc2626; }
+
+  /* Login */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f6f7f9; }
+  .login-card { background: #fff; padding: 32px; border-radius: 8px; width: 360px; border: 1px solid #e5e7eb; }
+  .login-card h1 { margin: 0 0 24px; font-size: 18px; }
+  .login-card .form-row { grid-template-columns: 1fr; }
+  .login-card button { width: 100%; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="login-wrap" style="display:none">
+  <div class="login-card">
+    <h1>Gateway 控制台 登录</h1>
+    <form id="login-form">
+      <div class="form-row">
+        <div><label>用户名</label><input name="username" autocomplete="username" required></div>
+      </div>
+      <div class="form-row">
+        <div><label>密码</label><input name="password" type="password" autocomplete="current-password" required></div>
+      </div>
+      <button type="submit" class="primary">登录</button>
+    </form>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="logo">Gateway 控制台</div>
+    <div class="spacer"></div>
+    <span class="user" id="user-info"></span>
+    <button onclick="logout()">登出</button>
+  </header>
+  <main>
+    <div class="tabs">
+      <button id="tab-tokens" class="active" onclick="showTab('tokens')">Token 管理</button>
+      <button id="tab-users" onclick="showTab('users')">用户管理</button>
+    </div>
+
+    <!-- Tokens tab -->
+    <section id="pane-tokens">
+      <div class="card">
+        <h2>新建 Token</h2>
+        <form id="create-token-form">
+          <div class="form-row">
+            <div><label>user_id (必填)</label><input name="user_id" required></div>
+            <div><label>流量(GB)</label><input name="balance_gb" type="number" min="1" value="100" required></div>
+            <div><label>有效期(天)</label><input name="expires_days" type="number" min="0" value="30"></div>
+            <div><label>token (留空自动生成)</label><input name="token" pattern="[a-z0-9]{4,}"></div>
+          </div>
+          <button type="submit" class="primary">创建</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>已有 Token <button class="ghost" onclick="loadTokens()" style="float:right">刷新</button></h2>
+        <table>
+          <thead><tr>
+            <th>Token</th><th>用户</th><th>余额</th><th>状态</th><th>到期</th><th></th>
+          </tr></thead>
+          <tbody id="tokens-tbody"><tr><td colspan="6" style="text-align:center;color:#9ca3af">加载中…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Users tab -->
+    <section id="pane-users" style="display:none">
+      <div class="card" id="create-user-card">
+        <h2>新建用户(仅 superadmin)</h2>
+        <form id="create-user-form">
+          <div class="form-row">
+            <div><label>用户名</label><input name="username" required></div>
+            <div><label>密码(≥8 位)</label><input name="password" type="password" minlength="8" required></div>
+            <div><label>角色</label><select name="role"><option value="operator">operator(只管 token)</option><option value="superadmin">superadmin(全权)</option></select></div>
+          </div>
+          <button type="submit" class="primary">创建</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>已有用户 <button class="ghost" onclick="loadUsers()" style="float:right">刷新</button></h2>
+        <table>
+          <thead><tr><th>用户名</th><th>角色</th><th>创建时间</th><th></th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="4" style="text-align:center;color:#9ca3af">加载中…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let me = null;
+
+// ---------- helpers ----------
+function toast(msg, isError) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('error', !!isError);
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opts);
+  let data = null;
+  try { data = await r.json(); } catch (_) {}
+  if (!r.ok) {
+    throw new Error((data && data.error) || r.statusText);
+  }
+  return data;
+}
+
+function fmtBytes(n) {
+  n = +n || 0;
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i === 0 ? 0 : 2) + ' ' + u[i];
+}
+
+function fmtTime(unix) {
+  const n = +unix;
+  if (!n) return '永久';
+  return new Date(n * 1000).toLocaleString('zh-CN', { hour12: false });
+}
+
+function tokenStatus(t) {
+  if (t.status !== 'active') return t.status;
+  if (+t.expires_at && +t.expires_at < Date.now()/1000) return 'expired';
+  if (+t.balance <= 0) return 'depleted';
+  return 'active';
+}
+
+// ---------- bootstrap ----------
+async function init() {
+  try {
+    me = await api('GET', '/admin/me');
+  } catch (_) {
+    document.getElementById('login-screen').style.display = 'flex';
+    return;
+  }
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-info').textContent = `${me.username} (${me.role})`;
+  if (me.role !== 'superadmin') {
+    document.getElementById('tab-users').style.display = 'none';
+    document.getElementById('create-user-card').style.display = 'none';
+  }
+  loadTokens();
+}
+
+// ---------- login ----------
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    await api('POST', '/admin/login', { username: fd.get('username'), password: fd.get('password') });
+    location.reload();
+  } catch (err) { toast(err.message, true); }
+});
+
+async function logout() {
+  try { await api('POST', '/admin/logout'); } catch (_) {}
+  location.reload();
+}
+
+// ---------- tabs ----------
+function showTab(name) {
+  for (const t of ['tokens', 'users']) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('pane-' + t).style.display = t === name ? '' : 'none';
+  }
+  if (name === 'users') loadUsers();
+}
+
+// ---------- tokens ----------
+document.getElementById('create-token-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    user_id: fd.get('user_id'),
+    balance_gb: +fd.get('balance_gb'),
+    expires_days: +fd.get('expires_days') || 0,
+  };
+  if (fd.get('token')) body.token = fd.get('token');
+  try {
+    const r = await api('POST', '/admin/tokens', body);
+    toast(`创建成功: ${r.token}`);
+    e.target.reset();
+    loadTokens();
+  } catch (err) { toast(err.message, true); }
+});
+
+async function loadTokens() {
+  const tb = document.getElementById('tokens-tbody');
+  tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#9ca3af">加载中…</td></tr>';
+  try {
+    const list = await api('GET', '/admin/tokens');
+    if (!list.length) {
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#9ca3af">暂无</td></tr>';
+      return;
+    }
+    list.sort((a,b) => (+b.created_at||0) - (+a.created_at||0));
+    tb.innerHTML = list.map(t => {
+      const st = tokenStatus(t);
+      const stCls = st === 'active' ? 'status-active' : 'status-revoked';
+      return `<tr>
+        <td><span class="copy-token" onclick="copyToken('${t.token}')" title="点击复制完整 mirror URL">${t.token}</span></td>
+        <td>${t.user_id||''}</td>
+        <td>${fmtBytes(t.balance)}</td>
+        <td class="${stCls}">${st}</td>
+        <td>${fmtTime(t.expires_at)}</td>
+        <td class="actions">
+          <button class="ghost" onclick="topup('${t.token}')">续费</button>
+          ${t.status === 'active'
+            ? `<button class="ghost" onclick="revoke('${t.token}')">封号</button>`
+            : `<button class="ghost" onclick="reactivate('${t.token}')">解封</button>`}
+          <button class="ghost" onclick="usage('${t.token}')">用量</button>
+          <button class="danger" onclick="delTok('${t.token}')">删除</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#dc2626">${err.message}</td></tr>`;
+  }
+}
+
+function copyToken(t) {
+  // 默认拼成 mirror URL,方便发给客户。域名从 location 推:把当前 admin host 的第一段换成 token。
+  // 也可以改成业务实际域名
+  const url = `https://${t}.cdn.your.com`;
+  navigator.clipboard.writeText(url).then(() => toast(`已复制: ${url}`));
+}
+
+async function topup(t) {
+  const gb = prompt('增加多少 GB?(0 或留空跳过)');
+  if (gb === null) return;
+  const days = prompt('延长多少天?(0 或留空跳过)');
+  if (days === null) return;
+  try {
+    await api('POST', `/admin/tokens/${t}/topup`, { add_gb: +gb || 0, extend_days: +days || 0 });
+    toast('续费成功');
+    loadTokens();
+  } catch (err) { toast(err.message, true); }
+}
+
+async function revoke(t) {
+  if (!confirm(`封禁 ${t}?客户下一次拉取就会断。`)) return;
+  try { await api('POST', `/admin/tokens/${t}/revoke`); toast('已封号'); loadTokens(); }
+  catch (err) { toast(err.message, true); }
+}
+
+async function reactivate(t) {
+  try { await api('POST', `/admin/tokens/${t}/reactivate`); toast('已解封'); loadTokens(); }
+  catch (err) { toast(err.message, true); }
+}
+
+async function delTok(t) {
+  if (!confirm(`彻底删除 ${t}?不可恢复。`)) return;
+  try { await api('DELETE', `/admin/tokens/${t}`); toast('已删除'); loadTokens(); }
+  catch (err) { toast(err.message, true); }
+}
+
+async function usage(t) {
+  try {
+    const r = await api('GET', `/admin/tokens/${t}/usage?days=14`);
+    const lines = Object.entries(r.usage)
+      .sort()
+      .map(([d,b]) => `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}  ${fmtBytes(b)}`);
+    alert(`用户 ${r.user_id} 近 14 天用量:\n\n${lines.join('\n')}`);
+  } catch (err) { toast(err.message, true); }
+}
+
+// ---------- users ----------
+document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    await api('POST', '/admin/users', { username: fd.get('username'), password: fd.get('password'), role: fd.get('role') });
+    toast('创建成功');
+    e.target.reset();
+    loadUsers();
+  } catch (err) { toast(err.message, true); }
+});
+
+async function loadUsers() {
+  const tb = document.getElementById('users-tbody');
+  try {
+    const list = await api('GET', '/admin/users');
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9ca3af">暂无</td></tr>'; return; }
+    tb.innerHTML = list.map(u => `<tr>
+      <td>${u.username}</td>
+      <td>${u.role}</td>
+      <td>${fmtTime(u.created_at)}</td>
+      <td class="actions">
+        ${me.role === 'superadmin' && u.username !== me.username
+          ? `<button class="danger" onclick="delUser('${u.username}')">删除</button>`
+          : ''}
+      </td>
+    </tr>`).join('');
+  } catch (err) {
+    tb.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#dc2626">${err.message}</td></tr>`;
+  }
+}
+
+async function delUser(u) {
+  if (!confirm(`删除用户 ${u}?`)) return;
+  try { await api('DELETE', `/admin/users/${u}`); toast('已删除'); loadUsers(); }
+  catch (err) { toast(err.message, true); }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: gateway-redis
+    restart: unless-stopped
+    volumes:
+      - ./data/redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hubdocker-gateway:latest
+    container_name: gateway
+    restart: unless-stopped
+    ports:
+      - "7000:7000"   # 唯一对外端口,OpenResty -> 网关
+    environment:
+      - UPSTREAM_URL=http://host.docker.internal:8081
+      - HARBOR_PROJECT=dockerhub
+      - REDIS_ADDR=redis:6379
+      - LISTEN=:7000
+      # 机器调用(支付回调等)的共享密钥,Web 浏览器走 cookie session
+      - ADMIN_TOKEN=${ADMIN_TOKEN:?ADMIN_TOKEN must be set}
+      # 首启自动创建一个 superadmin;已存在则跳过(永不覆盖密码)
+      - BOOTSTRAP_ADMIN_USER=${BOOTSTRAP_ADMIN_USER:-admin}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:?BOOTSTRAP_ADMIN_PASSWORD must be set}
+      - TZ=Asia/Shanghai
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

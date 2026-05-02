@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Docker Hub Inspector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Docker 品牌色 ---------- */
+  :root {
+    --docker-blue: #1d63ed;
+    --docker-blue-hover: #1a56d3;
+    --docker-blue-light: #e5f2fc;
+    --docker-blue-pale: #f5faff;
+    --docker-navy: #00084d;
+    --docker-navy-2: #0a1a4a;
+    --ocean-blue: #2496ed;
+
+    --text: #17191e;
+    --text-soft: #4f5b71;
+    --text-muted: #8993a4;
+    --border: #e1e6ee;
+    --border-soft: #eef1f6;
+    --bg: #ffffff;
+    --bg-page: #f8fafd;
+    --bg-hover: #f3f7fc;
+
+    --green: #1ea672;
+    --green-bg: #e6f7ef;
+    --red: #d83b3b;
+    --red-bg: #fdecec;
+    --amber: #c47700;
+    --amber-bg: #fff5e0;
+
+    --radius: 8px;
+    --radius-sm: 4px;
+    --shadow-sm: 0 1px 2px rgba(0, 8, 77, 0.06);
+    --shadow: 0 2px 8px rgba(0, 8, 77, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 8, 77, 0.10);
+
+    --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'Roboto Mono', 'SF Mono', Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-page);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--docker-blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- 顶部导航 ---------- */
+  .navbar {
+    background: var(--docker-navy);
+    color: #fff;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .navbar .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+  }
+
+  .navbar .logo svg { width: 32px; height: 32px; }
+
+  .navbar .logo .sub {
+    color: #8aa6ff;
+    font-weight: 400;
+    font-size: 13px;
+    margin-left: 6px;
+    padding-left: 10px;
+    border-left: 1px solid #2a3370;
+  }
+
+  .navbar .spacer { flex: 1; }
+
+  .navbar .nav-link {
+    color: #c5d0eb;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+  }
+  .navbar .nav-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    text-decoration: none;
+  }
+
+  /* ---------- 页面主体 ---------- */
+  .container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* hero */
+  .hero {
+    background: linear-gradient(135deg, var(--docker-navy) 0%, var(--docker-blue) 100%);
+    color: #fff;
+    padding: 36px 32px;
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .hero h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .hero p {
+    margin: 0;
+    color: #c5d0eb;
+    font-size: 14px;
+  }
+
+  /* ---------- 搜索卡片 ---------- */
+  .search-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .search-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .input-group {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+  .input-group .icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .input-group input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px 0 38px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    transition: border 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .input-group input::placeholder { color: var(--text-muted); }
+  .input-group input:focus {
+    border-color: var(--docker-blue);
+    box-shadow: 0 0 0 3px rgba(29, 99, 237, 0.12);
+  }
+
+  .num-input {
+    width: 90px;
+    height: 40px;
+    padding: 0 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+  }
+  .num-input:focus {
+    border-color: var(--docker-blue);
+    box-shadow: 0 0 0 3px rgba(29, 99, 237, 0.12);
+  }
+
+  .field-label { display: flex; flex-direction: column; gap: 4px; }
+  .field-label .lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  /* 按钮 */
+  .btn {
+    height: 40px;
+    padding: 0 20px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--docker-blue); color: #fff; }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--docker-blue-hover);
+    box-shadow: 0 2px 6px rgba(29, 99, 237, 0.3);
+  }
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--docker-blue);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--docker-blue-light);
+    border-color: var(--docker-blue);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-soft);
+    border-color: var(--border);
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+
+  /* 快捷标签 */
+  .quick-tags {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .quick-tags .label { color: var(--text-muted); font-size: 13px; margin-right: 4px; }
+  .quick-tag {
+    padding: 4px 10px;
+    background: var(--docker-blue-pale);
+    color: var(--docker-blue);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick-tag:hover {
+    background: var(--docker-blue-light);
+    border-color: var(--docker-blue);
+  }
+
+  /* ---------- 结果区 ---------- */
+  .result-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .result-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg-page);
+  }
+  .result-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-header .meta {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+  .result-body { padding: 20px; }
+
+  /* 状态徽章 */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge-success { background: var(--green-bg); color: var(--green); }
+  .badge-error   { background: var(--red-bg);   color: var(--red); }
+  .badge-warn    { background: var(--amber-bg); color: var(--amber); }
+  .badge-info    { background: var(--docker-blue-light); color: var(--docker-blue); }
+
+  /* 占位符 */
+  .placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .placeholder svg {
+    width: 56px;
+    height: 56px;
+    color: var(--border);
+    margin-bottom: 16px;
+  }
+  .placeholder .title { font-size: 15px; color: var(--text-soft); margin-bottom: 4px; }
+  .placeholder .desc { font-size: 13px; }
+
+  /* loading */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-soft);
+  }
+  .spinner {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--docker-blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-bottom: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* error */
+  .error-box {
+    padding: 14px 16px;
+    background: var(--red-bg);
+    border: 1px solid #f4c5c5;
+    border-radius: var(--radius-sm);
+    color: var(--red);
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .error-box svg { flex-shrink: 0; margin-top: 1px; }
+
+  /* repository info */
+  .repo-info { animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .repo-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .repo-title h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .repo-title .ns { color: var(--text-muted); font-weight: 400; }
+
+  .repo-desc {
+    color: var(--text-soft);
+    margin: 8px 0 20px;
+    line-height: 1.6;
+  }
+
+  .repo-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    padding: 14px;
+    background: var(--bg-page);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-soft);
+  }
+  .stat .stat-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .stat .stat-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat .stat-val.mono { font-family: var(--font-mono); font-size: 13px; }
+
+  /* tags table */
+  .tags-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .tags-table thead th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bg-page);
+    border-bottom: 1px solid var(--border);
+  }
+  .tags-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: middle;
+  }
+  .tags-table tbody tr:hover { background: var(--bg-hover); }
+  .tags-table tbody tr:last-child td { border-bottom: none; }
+
+  .tag-name-cell { display: flex; align-items: center; gap: 10px; }
+  .tag-name {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--docker-blue);
+    font-size: 13px;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    opacity: 0;
+  }
+  .tags-table tbody tr:hover .copy-btn { opacity: 1; }
+  .copy-btn:hover {
+    border-color: var(--docker-blue);
+    color: var(--docker-blue);
+    background: var(--docker-blue-pale);
+  }
+  .copy-btn.done { color: var(--green); border-color: var(--green); opacity: 1; }
+
+  .arch-list { display: flex; gap: 4px; flex-wrap: wrap; }
+  .arch-chip {
+    padding: 1px 8px;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-soft);
+  }
+
+  .size-cell { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+  .updated-cell { color: var(--text-muted); font-size: 13px; white-space: nowrap; }
+
+  /* pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-soft);
+    background: var(--bg-page);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .pagination .info { color: var(--text-soft); font-size: 13px; }
+  .pagination .info b { color: var(--text); }
+  .pagination .ctrls { display: flex; gap: 8px; align-items: center; }
+
+  .page-jump {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-soft);
+    padding: 0 4px;
+  }
+  .page-jump input {
+    width: 56px;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-align: center;
+    outline: none;
+    color: var(--text);
+    background: var(--bg);
+  }
+  .page-jump input:focus {
+    border-color: var(--docker-blue);
+    box-shadow: 0 0 0 3px rgba(29, 99, 237, 0.12);
+  }
+  .page-jump .of {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* pull command 提示 */
+  .pull-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--docker-blue-pale);
+    border: 1px solid var(--docker-blue-light);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--docker-navy);
+  }
+  .pull-hint .prompt { color: var(--text-muted); }
+  .pull-hint code { color: var(--docker-blue); font-weight: 500; }
+
+  /* footer */
+  footer {
+    margin-top: 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding-top: 20px;
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--docker-navy);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s ease-out;
+    z-index: 1000;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* 语言切换 */
+  .lang-switch {
+    display: inline-flex;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-left: 4px;
+  }
+  .lang-switch button {
+    background: transparent;
+    border: 0;
+    color: #c5d0eb;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .lang-switch button:hover { color: #fff; }
+  .lang-switch button.active {
+    background: var(--docker-blue);
+    color: #fff;
+  }
+
+  /* 标签过滤 */
+  .tag-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg);
+  }
+  .tag-filter .input-group { flex: 1; min-width: 0; }
+  .tag-filter .input-group input { height: 34px; font-size: 13px; }
+  .tag-filter .clear-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    height: 34px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .tag-filter .clear-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+  .tag-filter .hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* 响应式 */
+  @media (max-width: 720px) {
+    .navbar { padding: 0 16px; }
+    .navbar .nav-link { display: none; }
+    .container { padding: 16px; }
+    .hero { padding: 24px 20px; }
+    .hero h1 { font-size: 20px; }
+    .search-row { flex-direction: column; }
+    .search-row > * { width: 100%; }
+    .num-input { width: 100%; }
+    .tags-table thead { display: none; }
+    .tags-table tbody td {
+      display: block;
+      padding: 6px 16px;
+      border: none;
+    }
+    .tags-table tbody tr {
+      display: block;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .copy-btn { opacity: 1; }
+    .pagination { flex-direction: column; align-items: stretch; }
+    .pagination .ctrls { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<nav class="navbar">
+  <a href="/" class="logo">
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="28" width="8" height="8" fill="#2496ED"/>
+      <rect x="16" y="28" width="8" height="8" fill="#2496ED"/>
+      <rect x="26" y="28" width="8" height="8" fill="#2496ED"/>
+      <rect x="36" y="28" width="8" height="8" fill="#2496ED"/>
+      <rect x="16" y="18" width="8" height="8" fill="#2496ED"/>
+      <rect x="26" y="18" width="8" height="8" fill="#2496ED"/>
+      <rect x="36" y="18" width="8" height="8" fill="#2496ED"/>
+      <rect x="26" y="8"  width="8" height="8" fill="#2496ED"/>
+      <path d="M58 32 C 58 32, 54 28, 48 30 C 46 26, 42 26, 40 28 C 40 38, 46 44, 32 44 L 4 44 C 4 50, 12 54, 22 54 C 38 54, 50 46, 54 38 C 56 38, 58 36, 58 32 Z" fill="#2496ED"/>
+    </svg>
+    <span>Docker Hub</span>
+    <span class="sub">Inspector</span>
+  </a>
+  <div class="spacer"></div>
+  <a href="https://hub.docker.com" target="_blank" class="nav-link">hub.docker.com ↗</a>
+  <a href="https://docs.docker.com" target="_blank" class="nav-link" data-i18n="nav.docs">Docs</a>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" data-lang="en">EN</button>
+    <button type="button" data-lang="zh">中文</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="hero">
+    <h1 data-i18n="hero.title">Inspect any Docker Hub image</h1>
+    <p data-i18n="hero.desc">Check repository availability, browse tags, view supported architectures and image sizes — all in one place.</p>
+  </div>
+
+  <div class="search-card">
+    <div class="search-row">
+      <div class="input-group" style="flex: 2;">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input id="image" type="text" data-i18n-placeholder="search.placeholder" placeholder="Search image (e.g. nginx, bitnami/redis, grafana/grafana)" spellcheck="false" autocomplete="off" />
+      </div>
+
+      <div class="field-label">
+        <span class="lbl" data-i18n="search.pageSize">Page size</span>
+        <input id="pageSize" class="num-input" type="number" value="10" min="1" max="100" />
+      </div>
+
+      <div class="field-label">
+        <span class="lbl">&nbsp;</span>
+        <div style="display:flex; gap:8px;">
+          <button id="btnExists" class="btn btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span data-i18n="search.check">Check</span>
+          </button>
+          <button id="btnTags" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span data-i18n="search.listTags">List Tags</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-tags">
+      <span class="label" data-i18n="search.popular">Popular:</span>
+      <span id="quickTagList" style="display:contents;">
+        <span class="quick-tag" data-img="hello-world">hello-world</span>
+        <span class="quick-tag" data-img="busybox">busybox</span>
+        <span class="quick-tag" data-img="nginx">nginx</span>
+        <span class="quick-tag" data-img="redis">redis</span>
+        <span class="quick-tag" data-img="mysql">mysql</span>
+        <span class="quick-tag" data-img="postgres">postgres</span>
+        <span class="quick-tag" data-img="node">node</span>
+        <span class="quick-tag" data-img="python">python</span>
+        <span class="quick-tag" data-img="golang">golang</span>
+        <span class="quick-tag" data-img="jenkins/jenkins">jenkins/jenkins</span>
+        <span class="quick-tag" data-img="centos">centos</span>
+        <span class="quick-tag" data-img="alpine">alpine</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="result-card">
+    <div class="result-header">
+      <h2 id="outTitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span data-i18n="result.title">Results</span>
+      </h2>
+      <span class="meta" id="outMeta"></span>
+    </div>
+    <div id="result" class="result-body">
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <div class="title" data-i18n="placeholder.title">Search for an image to get started</div>
+        <div class="desc" data-i18n="placeholder.desc">Type an image name above, or click one of the popular tags.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span data-i18n="footer.text">Data sourced from</span>
+    <a href="https://hub.docker.com" target="_blank">hub.docker.com</a>
+    · <span data-i18n="footer.poweredBy">Powered by Gin (Go)</span>
+  </footer>
+</div>
+
+<div id="toast" class="toast">Copied!</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const imageEl = $('image');
+  const pageSizeEl = $('pageSize');
+  const resultEl = $('result');
+  const outTitleEl = $('outTitle');
+  const outMetaEl = $('outMeta');
+  const toastEl = $('toast');
+
+  // ---------- i18n ----------
+  const I18N = {
+    en: {
+      'nav.docs': 'Docs',
+      'hero.title': 'Inspect any Docker Hub image',
+      'hero.desc': 'Check repository availability, browse tags, view supported architectures and image sizes — all in one place.',
+      'search.placeholder': 'Search image (e.g. nginx, bitnami/redis, grafana/grafana)',
+      'search.pageSize': 'Page size',
+      'search.check': 'Check',
+      'search.listTags': 'List Tags',
+      'search.popular': 'Popular:',
+      'result.title': 'Results',
+      'result.loading': 'Loading',
+      'result.error': 'Error',
+      'result.checking': 'Checking {image}...',
+      'result.fetching': 'Fetching from Docker Hub...',
+      'result.loadingTags': 'Loading tags for {image} (page {page})...',
+      'result.repoCheck': 'Repository check',
+      'result.tags': 'Tags',
+      'placeholder.title': 'Search for an image to get started',
+      'placeholder.desc': 'Type an image name above, or click one of the popular tags.',
+      'placeholder.emptyName': 'Please enter an image name',
+      'placeholder.notFound': '{image} was not found on Docker Hub.',
+      'placeholder.notFoundTip': 'Tip: official images live under the library/ namespace (auto-detected).',
+      'placeholder.noTagsTitle': 'No tags on page {page}',
+      'placeholder.noTagsDesc': 'Try going back to page 1 or reducing page size.',
+      'placeholder.noMatchTitle': 'No matching tags',
+      'placeholder.noMatchDesc': 'Try a different filter or clear it to see all tags.',
+      'placeholder.unavailableTitle': '{image} is currently unavailable',
+      'placeholder.unavailableDesc': 'The image may have been removed, or Docker Hub is unreachable. Please try another image.',
+      'placeholder.notFoundTitle': '{image} was not found on Docker Hub',
+      'placeholder.notFoundDesc': 'The image may have been removed or moved to another namespace.',
+      'badge.private': 'Private',
+      'badge.public': 'Public',
+      'badge.found': '✓ found',
+      'badge.notFound': 'not found',
+      'badge.failed': 'failed',
+      'badge.unavailable': 'unavailable',
+      'badge.total': '{n} total',
+      'badge.matching': '{n} matching',
+      'stats.stars': '★ Stars',
+      'stats.pulls': '↓ Pulls',
+      'stats.lastUpdated': 'Last updated',
+      'stats.owner': 'Owner',
+      'repo.noDesc': 'No description provided.',
+      'tags.tag': 'Tag',
+      'tags.size': 'Compressed size',
+      'tags.arch': 'Architectures',
+      'tags.lastPushed': 'Last pushed',
+      'tags.copyTitle': 'Copy pull command',
+      'tags.copyDone': 'Pull command copied',
+      'tags.copyFail': 'Copy failed',
+      'filter.placeholder': 'Filter tags (e.g. alpine, 1.25, latest)...',
+      'filter.clear': 'Clear',
+      'filter.hint': 'Server-side fuzzy match',
+      'page.showing': 'Showing {from}–{to} of {total} tags',
+      'page.first': 'First page',
+      'page.last': 'Last page',
+      'page.prev': 'Prev',
+      'page.next': 'Next',
+      'time.justNow': 'just now',
+      'time.minutes': '{n} minutes ago',
+      'time.hours': '{n} hours ago',
+      'time.days': '{n} days ago',
+      'time.months': '{n} months ago',
+      'time.years': '{n} years ago',
+      'footer.text': 'Data sourced from',
+      'footer.poweredBy': 'Powered by Gin (Go)',
+    },
+    zh: {
+      'nav.docs': '文档',
+      'hero.title': '查询任意 Docker Hub 镜像',
+      'hero.desc': '一站式查看仓库是否存在、浏览标签、支持的架构和镜像大小。',
+      'search.placeholder': '搜索镜像（例如 nginx、bitnami/redis、grafana/grafana）',
+      'search.pageSize': '每页数量',
+      'search.check': '检查',
+      'search.listTags': '查看标签',
+      'search.popular': '常用：',
+      'result.title': '结果',
+      'result.loading': '加载中',
+      'result.error': '错误',
+      'result.checking': '正在检查 {image}...',
+      'result.fetching': '正在从 Docker Hub 获取数据...',
+      'result.loadingTags': '加载 {image} 的标签（第 {page} 页）...',
+      'result.repoCheck': '仓库检查',
+      'result.tags': '标签',
+      'placeholder.title': '搜索镜像以开始',
+      'placeholder.desc': '在上方输入镜像名，或点击一个常用标签。',
+      'placeholder.emptyName': '请输入镜像名',
+      'placeholder.notFound': '在 Docker Hub 上未找到 {image}。',
+      'placeholder.notFoundTip': '提示：官方镜像位于 library/ 命名空间下（已自动识别）。',
+      'placeholder.noTagsTitle': '第 {page} 页没有标签',
+      'placeholder.noTagsDesc': '可以返回第 1 页或减少每页数量。',
+      'placeholder.noMatchTitle': '没有匹配的标签',
+      'placeholder.noMatchDesc': '换一个过滤词，或清空过滤查看全部标签。',
+      'placeholder.unavailableTitle': '{image} 暂时无法访问',
+      'placeholder.unavailableDesc': '该镜像可能已被移除，或 Docker Hub 暂时不可达。请尝试其他镜像。',
+      'placeholder.notFoundTitle': '在 Docker Hub 上未找到 {image}',
+      'placeholder.notFoundDesc': '该镜像可能已被删除，或迁移到了其他命名空间。',
+      'badge.private': '私有',
+      'badge.public': '公开',
+      'badge.found': '✓ 已找到',
+      'badge.notFound': '未找到',
+      'badge.failed': '失败',
+      'badge.unavailable': '暂不可用',
+      'badge.total': '共 {n} 个',
+      'badge.matching': '匹配 {n} 个',
+      'stats.stars': '★ Star 数',
+      'stats.pulls': '↓ 拉取数',
+      'stats.lastUpdated': '最近更新',
+      'stats.owner': '所有者',
+      'repo.noDesc': '暂无描述。',
+      'tags.tag': '标签',
+      'tags.size': '压缩大小',
+      'tags.arch': '架构',
+      'tags.lastPushed': '最近推送',
+      'tags.copyTitle': '复制 pull 命令',
+      'tags.copyDone': '已复制 pull 命令',
+      'tags.copyFail': '复制失败',
+      'filter.placeholder': '过滤标签（例如 alpine、1.25、latest）...',
+      'filter.clear': '清空',
+      'filter.hint': '服务端模糊匹配',
+      'page.showing': '显示第 {from}–{to} 个，共 {total} 个标签',
+      'page.first': '第一页',
+      'page.last': '最后一页',
+      'page.prev': '上一页',
+      'page.next': '下一页',
+      'time.justNow': '刚刚',
+      'time.minutes': '{n} 分钟前',
+      'time.hours': '{n} 小时前',
+      'time.days': '{n} 天前',
+      'time.months': '{n} 个月前',
+      'time.years': '{n} 年前',
+      'footer.text': '数据来源',
+      'footer.poweredBy': '由 Gin (Go) 驱动',
+    },
+  };
+
+  let currentLang = (() => {
+    try {
+      const saved = localStorage.getItem('lang');
+      if (saved === 'en' || saved === 'zh') return saved;
+    } catch (_) {}
+    return 'en';
+  })();
+
+  function t(key, vars) {
+    const tbl = I18N[currentLang] || I18N.en;
+    let s = tbl[key];
+    if (s === undefined) s = I18N.en[key] || key;
+    if (vars) {
+      for (const k in vars) s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
+    }
+    return s;
+  }
+
+  function applyI18n() {
+    document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('.lang-switch button').forEach((b) => {
+      b.classList.toggle('active', b.dataset.lang === currentLang);
+    });
+  }
+
+  function setLang(lang) {
+    if (lang !== 'en' && lang !== 'zh') return;
+    if (lang === currentLang) return;
+    currentLang = lang;
+    try { localStorage.setItem('lang', lang); } catch (_) {}
+    applyI18n();
+    // 重新渲染当前结果(如果有)
+    if (lastView) lastView.render();
+  }
+
+  // 当前查询状态(翻页时复用,不需要再读输入框)
+  let currentPage = 1;
+  let currentFilter = '';
+  let lastView = null; // { render: fn } — 用于切换语言时重绘
+
+  function fmtBytes(n) {
+    if (!n && n !== 0) return '—';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0, v = n;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + ' ' + u[i];
+  }
+
+  function fmtNum(n) {
+    if (n === undefined || n === null) return '—';
+    return Number(n).toLocaleString();
+  }
+
+  function fmtRelTime(s) {
+    if (!s) return '—';
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return t('time.justNow');
+    if (diff < 3600) return t('time.minutes', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return t('time.hours', { n: Math.floor(diff / 3600) });
+    if (diff < 86400 * 30) return t('time.days', { n: Math.floor(diff / 86400) });
+    if (diff < 86400 * 365) return t('time.months', { n: Math.floor(diff / (86400 * 30)) });
+    return t('time.years', { n: Math.floor(diff / (86400 * 365)) });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function setHeader(title, badge, meta) {
+    outTitleEl.innerHTML = title + (badge ? ' ' + badge : '');
+    outMetaEl.textContent = meta || '';
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toastEl.classList.remove('show'), 1500);
+  }
+
+  function getImage() {
+    const v = imageEl.value.trim();
+    if (!v) {
+      imageEl.focus();
+      throw new Error(t('placeholder.emptyName'));
+    }
+    return v;
+  }
+
+  function showLoading(msg) {
+    lastView = null;
+    setHeader('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg> ' + escapeHtml(t('result.loading')), '', '');
+    resultEl.innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>${escapeHtml(msg || t('result.fetching'))}</div>
+      </div>`;
+  }
+
+  function showError(msg) {
+    lastView = null;
+    setHeader('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ' + escapeHtml(t('result.error')), `<span class="badge badge-error">${escapeHtml(t('badge.failed'))}</span>`, '');
+    resultEl.innerHTML = `
+      <div class="error-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>${escapeHtml(msg)}</div>
+      </div>`;
+  }
+
+  async function request(url) {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || json.code !== 0) {
+      throw new Error(json.message || `HTTP ${res.status}`);
+    }
+    return json.data;
+  }
+
+  // 渲染"暂时不可用 / 未找到"的友好占位(灰色,不是红色 error)
+  function renderUnavailable(image, reason, headerLabel) {
+    lastView = { render: () => renderUnavailable(image, reason, headerLabel) };
+    const isNotFound = reason === 'not_found';
+    setHeader(
+      escapeHtml(headerLabel || t('result.tags')),
+      isNotFound
+        ? `<span class="badge badge-warn">${escapeHtml(t('badge.notFound'))}</span>`
+        : `<span class="badge badge-warn">${escapeHtml(t('badge.unavailable') || '—')}</span>`,
+      image
+    );
+    const title = isNotFound
+      ? t('placeholder.notFoundTitle', { image })
+      : t('placeholder.unavailableTitle', { image });
+    const desc = isNotFound
+      ? t('placeholder.notFoundDesc')
+      : t('placeholder.unavailableDesc');
+    resultEl.innerHTML = `
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <div class="title">${escapeHtml(title)}</div>
+        <div class="desc">${escapeHtml(desc)}</div>
+      </div>`;
+  }
+
+  async function checkExists() {
+    let image;
+    try { image = getImage(); } catch (e) { showError(e.message); return; }
+    showLoading(t('result.checking', { image }));
+    try {
+      const data = await request(`/api/image/exists?image=${encodeURIComponent(image)}`);
+      // 上游不可达 — 不抛红色 error,直接渲染友好占位。
+      if (data && data.available === false) {
+        renderUnavailable(image, data.reason || 'upstream_unavailable', t('result.repoCheck'));
+        return;
+      }
+      lastView = { render: () => renderExists(image, data) };
+      renderExists(image, data);
+    } catch (e) {
+      // 网络层失败(后端没起 / 浏览器侧网络) — 也用占位代替红色 error。
+      console.warn('[exists] request failed:', e);
+      renderUnavailable(image, 'upstream_unavailable', t('result.repoCheck'));
+    }
+  }
+
+  function renderExists(image, data) {
+    if (!data.exists) {
+      // 镜像确实不存在 — 也走友好占位,不再用红色 error box。
+      renderUnavailable(image, 'not_found', t('result.repoCheck'));
+      return;
+    }
+
+    const r = data.repository || {};
+    setHeader(escapeHtml(t('result.repoCheck')), `<span class="badge badge-success">${escapeHtml(t('badge.found'))}</span>`, `${r.namespace}/${r.name}`);
+    resultEl.innerHTML = `
+      <div class="repo-info">
+        <div class="repo-title">
+          <h3><span class="ns">${escapeHtml(r.namespace)}/</span>${escapeHtml(r.name)}</h3>
+          ${r.is_private
+            ? `<span class="badge badge-warn">${escapeHtml(t('badge.private'))}</span>`
+            : `<span class="badge badge-info">${escapeHtml(t('badge.public'))}</span>`}
+        </div>
+        <div class="repo-desc">${escapeHtml(r.description || t('repo.noDesc'))}</div>
+        <div class="repo-stats">
+          <div class="stat">
+            <div class="stat-lbl">${escapeHtml(t('stats.stars'))}</div>
+            <div class="stat-val">${fmtNum(r.star_count)}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-lbl">${escapeHtml(t('stats.pulls'))}</div>
+            <div class="stat-val">${fmtNum(r.pull_count)}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-lbl">${escapeHtml(t('stats.lastUpdated'))}</div>
+            <div class="stat-val mono">${escapeHtml(fmtRelTime(r.last_updated))}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-lbl">${escapeHtml(t('stats.owner'))}</div>
+            <div class="stat-val mono">${escapeHtml(r.user || r.namespace)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function listTags(page, opts) {
+    let image;
+    try { image = getImage(); } catch (e) { showError(e.message); return; }
+
+    page = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(pageSizeEl.value) || 10));
+    pageSizeEl.value = pageSize;
+    currentPage = page;
+
+    const filter = (opts && typeof opts.filter === 'string') ? opts.filter : currentFilter;
+    currentFilter = filter;
+    const keepFocus = !!(opts && opts.keepFilterFocus);
+
+    showLoading(t('result.loadingTags', { image, page }));
+    try {
+      let url = `/api/image/tags?image=${encodeURIComponent(image)}&page=${page}&page_size=${pageSize}`;
+      if (filter) url += `&name=${encodeURIComponent(filter)}`;
+      const data = await request(url);
+      // 上游 404 或不可达 — 不抛红色 error,渲染友好占位。
+      if (data && data.available === false) {
+        renderUnavailable(data.image || image, data.reason || 'upstream_unavailable', t('result.tags'));
+        return;
+      }
+      lastView = { render: () => renderTags(data, { focusFilter: keepFocus }) };
+      renderTags(data, { focusFilter: keepFocus });
+      if (!keepFocus) {
+        document.querySelector('.result-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (e) {
+      console.warn('[tags] request failed:', e);
+      renderUnavailable(image, 'upstream_unavailable', t('result.tags'));
+    }
+  }
+
+  function renderTags(data, viewOpts) {
+    const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
+    const isFiltering = !!currentFilter;
+    const totalBadge = isFiltering
+      ? t('badge.matching', { n: fmtNum(data.total) })
+      : t('badge.total', { n: fmtNum(data.total) });
+    setHeader(escapeHtml(t('result.tags')), `<span class="badge badge-info">${escapeHtml(totalBadge)}</span>`, data.image);
+
+    const filterBar = `
+      <div class="tag-filter">
+        <div class="input-group">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input id="tagFilter" type="text" autocomplete="off" spellcheck="false"
+            placeholder="${escapeHtml(t('filter.placeholder'))}"
+            value="${escapeHtml(currentFilter)}" />
+        </div>
+        ${currentFilter ? `<button class="clear-btn" id="tagFilterClear">${escapeHtml(t('filter.clear'))}</button>` : ''}
+        <span class="hint">${escapeHtml(t('filter.hint'))}</span>
+      </div>`;
+
+    if (!data.tags || data.tags.length === 0) {
+      const noMatch = isFiltering;
+      resultEl.innerHTML = `
+        <div style="margin: -20px -20px 0;">${filterBar}</div>
+        <div class="placeholder">
+          <div class="title">${escapeHtml(noMatch ? t('placeholder.noMatchTitle') : t('placeholder.noTagsTitle', { page: data.page }))}</div>
+          <div class="desc">${escapeHtml(noMatch ? t('placeholder.noMatchDesc') : t('placeholder.noTagsDesc'))}</div>
+        </div>`;
+      bindFilterEvents(viewOpts);
+      return;
+    }
+
+    const rows = data.tags.map((tg) => {
+      const archs = (tg.images || [])
+        .filter(i => i.architecture)
+        .map(i => `<span class="arch-chip">${escapeHtml(i.os || 'linux')}/${escapeHtml(i.architecture)}</span>`)
+        .join('') || '<span class="arch-chip">—</span>';
+      const pullCmd = `docker pull ${data.image}:${tg.name}`;
+      return `
+        <tr>
+          <td>
+            <div class="tag-name-cell">
+              <span class="tag-name">${escapeHtml(tg.name)}</span>
+              <button class="copy-btn" data-copy="${escapeHtml(pullCmd)}" title="${escapeHtml(t('tags.copyTitle'))}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </td>
+          <td class="size-cell">${fmtBytes(tg.full_size)}</td>
+          <td><div class="arch-list">${archs}</div></td>
+          <td class="updated-cell">${escapeHtml(fmtRelTime(tg.last_updated))}</td>
+        </tr>`;
+    }).join('');
+
+    const fromN = (data.page - 1) * data.page_size + 1;
+    const toN = (data.page - 1) * data.page_size + data.tags.length;
+    const showingHtml = t('page.showing', {
+      from: `<b>${fromN}</b>`,
+      to: `<b>${toN}</b>`,
+      total: `<b>${fmtNum(data.total)}</b>`,
+    });
+
+    const paginationHtml = (suffix) => `
+      <div class="pagination">
+        <div class="info">${showingHtml}</div>
+        <div class="ctrls">
+          <button data-act="first-${suffix}" class="btn btn-ghost" ${data.page > 1 ? '' : 'disabled'} title="${escapeHtml(t('page.first'))}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+          </button>
+          <button data-act="prev-${suffix}" class="btn btn-ghost" ${data.has_prev ? '' : 'disabled'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            ${escapeHtml(t('page.prev'))}
+          </button>
+          <span class="page-jump">
+            <input data-act="jump-${suffix}" type="number" min="1" max="${totalPages}" value="${data.page}" />
+            <span class="of">/ ${totalPages}</span>
+          </span>
+          <button data-act="next-${suffix}" class="btn btn-ghost" ${data.has_next ? '' : 'disabled'}>
+            ${escapeHtml(t('page.next'))}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button data-act="last-${suffix}" class="btn btn-ghost" ${data.page < totalPages ? '' : 'disabled'} title="${escapeHtml(t('page.last'))}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          </button>
+        </div>
+      </div>`;
+
+    resultEl.innerHTML = `
+      <div style="margin: -20px -20px 0;">${filterBar}</div>
+
+      <div class="pull-hint" style="margin-top: 16px;">
+        <span class="prompt">$</span>
+        <span>docker pull <code>${escapeHtml(data.image)}</code>:&lt;tag&gt;</span>
+      </div>
+
+      <div style="margin: 0 -20px;">${paginationHtml('top')}</div>
+
+      <div style="margin: 0 -20px;">
+        <table class="tags-table">
+          <thead>
+            <tr>
+              <th>${escapeHtml(t('tags.tag'))}</th>
+              <th style="width: 110px;">${escapeHtml(t('tags.size'))}</th>
+              <th>${escapeHtml(t('tags.arch'))}</th>
+              <th style="width: 140px;">${escapeHtml(t('tags.lastPushed'))}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+
+      <div style="margin: 0 -20px -20px;">${paginationHtml('bot')}</div>`;
+
+    bindFilterEvents(viewOpts);
+
+    // 给所有翻页按钮和跳转输入绑定事件(顶部和底部都有)
+    resultEl.querySelectorAll('[data-act]').forEach((el) => {
+      const act = el.dataset.act.split('-')[0]; // first / prev / next / last / jump
+      if (act === 'jump') {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            let p = parseInt(el.value) || 1;
+            p = Math.min(totalPages, Math.max(1, p));
+            listTags(p);
+          }
+        });
+        el.addEventListener('change', () => {
+          let p = parseInt(el.value) || 1;
+          p = Math.min(totalPages, Math.max(1, p));
+          if (p !== data.page) listTags(p);
+        });
+      } else {
+        el.addEventListener('click', () => {
+          if (el.disabled) return;
+          if (act === 'first') listTags(1);
+          else if (act === 'prev') listTags(data.page - 1);
+          else if (act === 'next') listTags(data.page + 1);
+          else if (act === 'last') listTags(totalPages);
+        });
+      }
+    });
+
+    resultEl.querySelectorAll('.copy-btn').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const text = b.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(text);
+          b.classList.add('done');
+          showToast(t('tags.copyDone'));
+          setTimeout(() => b.classList.remove('done'), 1500);
+        } catch {
+          showToast(t('tags.copyFail'));
+        }
+      });
+    });
+  }
+
+  // 标签过滤输入绑定(防抖请求服务端)
+  let filterDebounce = null;
+  function bindFilterEvents(viewOpts) {
+    const input = $('tagFilter');
+    if (!input) return;
+    if (viewOpts && viewOpts.focusFilter) {
+      input.focus();
+      const v = input.value;
+      input.setSelectionRange(v.length, v.length);
+    }
+    input.addEventListener('input', () => {
+      const val = input.value;
+      clearTimeout(filterDebounce);
+      filterDebounce = setTimeout(() => {
+        listTags(1, { filter: val.trim(), keepFilterFocus: true });
+      }, 300);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(filterDebounce);
+        listTags(1, { filter: input.value.trim(), keepFilterFocus: true });
+      } else if (e.key === 'Escape' && input.value) {
+        clearTimeout(filterDebounce);
+        input.value = '';
+        listTags(1, { filter: '', keepFilterFocus: true });
+      }
+    });
+    const clearBtn = $('tagFilterClear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        clearTimeout(filterDebounce);
+        listTags(1, { filter: '', keepFilterFocus: true });
+      });
+    }
+  }
+
+  $('btnExists').addEventListener('click', checkExists);
+  $('btnTags').addEventListener('click', () => { currentFilter = ''; listTags(1, { filter: '' }); });
+
+  imageEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { currentFilter = ''; listTags(1, { filter: '' }); }
+  });
+
+  // 语言切换
+  document.querySelectorAll('.lang-switch button').forEach((b) => {
+    b.addEventListener('click', () => setLang(b.dataset.lang));
+  });
+  applyI18n();
+
+  // page_size 改了之后立刻重新搜
+  pageSizeEl.addEventListener('change', () => {
+    if (imageEl.value.trim()) listTags(1);
+  });
+
+  $('quickTagList').addEventListener('click', (e) => {
+    const el = e.target.closest('.quick-tag');
+    if (!el) return;
+    imageEl.value = el.dataset.img;
+    currentFilter = '';
+    listTags(1, { filter: '' });
+  });
+
+  imageEl.focus();
+</script>
+</body>
+</html>

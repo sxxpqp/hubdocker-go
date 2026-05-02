@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Read(//opt/**)",
+      "Read(//opt/hubdocker-go/**)"
+    ]
+  }
+}
