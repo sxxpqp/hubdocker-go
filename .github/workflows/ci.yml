@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: registry.cn-hangzhou.aliyuncs.com
-  IMAGE_NAME: sxxpqp/hubdocker-go
+  IMAGE_NAME: sxxpqp/hubdocker-serach
 
 jobs:
   build-and-test:
